@@ -134,17 +134,22 @@ old_w = ann.get_weights()
 
 
 while True:
-    trainer.train(dataset=ds)
-    ann.monitor.report_epoch()
-    #ann.monitor()
-    new_w=ann.get_weights()
-    for item in weight_difference(old_w, new_w):
+	trainer.train(dataset=ds)
+	ann.monitor.report_epoch()
+	#ann.monitor()
+	new_w=ann.get_weights()
+	for item in weight_difference(old_w, new_w):
 		for diff in item:
 			if diff != 0.0:
 				print diff
-    old_w=new_w
-    if not trainer.continue_learning(ann):
-        break
+	old_w=new_w
+	if not trainer.continue_learning(ann):
+		break
+     
+#
+# ^^^ Settles way to quickly (i.e. 30 epochs) on a set of weights
+# to-do list: tweak and improve
+#
         
 #print of comparison:
 m=0
