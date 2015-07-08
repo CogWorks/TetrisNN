@@ -122,6 +122,7 @@ trainer.setup(ann, ds)
 weights = ann.get_weights()
 #for printing comparison
 
+
 while True:
     trainer.train(dataset=ds)
     ann.monitor.report_epoch()
@@ -141,6 +142,16 @@ for f,b in itertools.izip(weights,ann.get_weights()):
 #Get cd_... and min_ht
 #get zoid
 #get position and orientation
+
+def weight_difference(old_w, new_w):
+	output = []
+	node_w=[]
+	for old, new in itertools.izip(old_w,new_w):
+		node_w=[]
+		for o, n in itertools.izip(old, new):
+			node_w.append(new-old)
+		output.append(node_W)
+	return output
 
 
 def check_int(item):
