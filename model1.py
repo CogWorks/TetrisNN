@@ -18,15 +18,16 @@ pp = pprint.PrettyPrinter(indent=4)
 #data_types=[float,		str,			int,		str,	str,		str,			int,			int,				int,		int,		int,				str,			str,				str,				str,				str,		str,			str,			str,			str,			bool,			str,			int,	int,		int,			int,		int,																											int,		int,				int,				int,				int,		int,		float,			int,			int,		float,		int,				int,				str,		str,		int,		int,		int,																														str,			str,		str,		str,		str,			str,			str,			str,			str,			str,			str,			str,			str,			str,			str,			str,			str,			str,			str,		str,		int,			int,		int,			int,	int,	int,	int,	int,	int,	int,	int,	int,	int,		int,			int,		int,			int,			int,			int,		int,		float,																																									int,		int,			int,			int,			int,			int,				int,			int,		int,			int,		float,			int,		float,		float,				int,		float,			int,			int,			int,			int,			int,		int,	int,			int,		int,				int,				int]
 #data_types_full=np.dtype([('ts',float),('event_type',str),('SID',int),('ECID',str),('session',str),('game_type',str),('game_number',int),('episode_number',int),('level',int),('score',int),('lines_cleared',int),('completed',str),('game_duration',str),('avg_ep_duration',str),('zoid_sequence',str),('evt_id',str),('evt_data1',str),('evt_data2',str),('curr_zoid',str),('next_zoid',str),('danger_mode',bool),('evt_sequence',str),('rots',int),('trans',int),('path_length',int),('min_rots',int),('min_trans',int),('min_path',int),('min_rots_diff',int),('min_trans_diff',int),('min_path_diff',int),('u_drops',int),('s_drops',int),('prop_u_drops',float),('initial_lat',int),('drop_lat',int),('avg_lat',float),('tetrises_game',int),('tetrises_level',int),('delaying',str),('dropping',str),('zoid_rot',int),('zoid_col',int),('zoid_row',int),('board_rep',str),('zoid_rep',str),('smi_ts',str),('smi_eyes',str),('smi_samp_x_l',str),('smi_samp_x_r',str),('smi_samp_y_l',str),('smi_samp_y_r',str),('smi_diam_x_l',str),('smi_diam_x_r',str),('smi_diam_y_l',str),('smi_diam_y_r',str),('smi_eye_x_l',str),('smi_eye_x_r',str),('smi_eye_y_l',str),('smi_eye_y_r',str),('smi_eye_z_l',str),('smi_eye_z_r',str),('fix_x',str),('fix_y',str),('all_diffs',int),('all_ht',int),('all_trans',int),('cd_1',int),('cd_2',int),('cd_3',int),('cd_4',int),('cd_5',int),('cd_6',int),('cd_7',int),('cd_8',int),('cd_9',int),('cleared',int),('col_trans',int),('column_9',int),('cuml_cleared',int),('cuml_eroded',int),('cuml_wells',int),('d_all_ht',int),('d_max_ht',int),('d_mean_ht',float),('d_pits',int),('deep_wells',int),('eroded_cells',int),('full_cells',int),('jaggedness',int),('landing_height',int),('lumped_pits',int),('matches',int),('max_diffs',int),('max_ht',int),('max_ht_diff',float),('max_well',int),('mean_ht',float),('mean_pit_depth',float),('min_ht',int),('min_ht_diff',float),('move_score',int),('nine_filled',int),('pattern_div',int),('pit_depth',int),('pit_row',int),('row_trans',int),('tetris',int),('tetris_progress',int),('weighted_cells',int),('wells',int)])
 
-f = open('episodes_3001_2014-10-16_14-13-19.tsv','r')
+f = open('test_data.tsv','r')
 
-line1 = f.readline()
-
+f.readline()
+#skip the first line because it just lists the log variables
 
 pieces = ["I", "O", "T", "S", "Z", "J", "L"]
 data_array=[]
 
 def GetInputOutput(data_array,pieces):
+	#Changes python array of the relevant data to a DenseDesignMatrix, required for mlp.mlp
 	X=[[-1]*17]*len(data_array)
 	y=[[-1]*2]*len(data_array)
 	i=0
@@ -73,6 +74,7 @@ class GetInputOutputClass(DenseDesignMatrix):
  '''
 
 def zoid_to_binary(pieces,zoid):
+	#Turns the zoid into a binary classification representation based on the pieces list
 	binary=[0]*len(pieces)
 	i=0
 	for z in pieces:
@@ -103,10 +105,13 @@ for line in f:
 		data_array.append(temp_array)
 
 ds = GetInputOutput(data_array, pieces)
+#make dataset, with 17 inputs per set
 
 hidden_layer = mlp.Linear(layer_name='hidden', dim=10, irange=.1, init_bias=1.)
+#make hidden layer with 10 nodes (apporx avg between input/output)
 
 output_layer = mlp.Softmax(2, 'output', irange=.1)
+#2 nodes, position and orientation (integers for now, change to binary if it fails to coalesce)
 
 trainer = sgd.SGD(learning_rate=.05, batch_size=10, termination_criterion=EpochCounter(1000))
 
@@ -115,20 +120,16 @@ ann = mlp.MLP(layers, nvis=17)
 trainer.setup(ann, ds)
 
 weights = ann.get_weights()
+#for printing comparison
 
 while True:
     trainer.train(dataset=ds)
     ann.monitor.report_epoch()
     ann.monitor()
-    print "cost: ", ann.cost()
     if not trainer.continue_learning(ann):
         break
         
-print "before"
-print weights
-print "after"      
-print ann.get_weights()
-
+#print of comparison:
 m=0
 for f,b in itertools.izip(weights,ann.get_weights()):
     print m, 
@@ -153,7 +154,7 @@ def check_float(item):
 	return False
 	
 
-
+#Turns the board state string in the log into the list of lists it represents
 def lists_to_board(item_string):
 	rows=item_string.strip("'[[").strip("]]'")
 	rows_list=rows.split("], [")
@@ -162,6 +163,7 @@ def lists_to_board(item_string):
 		board_array.append(row.split(", "))
 	return np.array(board_array)
 
+#Turns the event sequence string to the correct format
 def evt_sequence_to_list(evtsequence):
 	evts=evtsequence.strip("[[").strip("]]")
 	evts_list=evts.split("], [")
