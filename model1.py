@@ -85,6 +85,16 @@ def zoid_to_binary(pieces,zoid):
 			i+=1
 	return binary
 
+def weight_difference(old_w, new_w):
+	output = []
+	node_w=[]
+	for old, new in itertools.izip(old_w,new_w):
+		node_w=[]
+		for o, n in itertools.izip(old, new):
+			w_diff=n-o
+			node_w.append(w_diff)
+		output.append(node_w)
+	return output
 
 #67 through 75 is height change
 #99 is min_ht
@@ -119,19 +129,31 @@ layers = [hidden_layer, output_layer]
 ann = mlp.MLP(layers, nvis=17)
 trainer.setup(ann, ds)
 
-weights = ann.get_weights()
+old_w = ann.get_weights()
 #for printing comparison
 
+
 while True:
-    trainer.train(dataset=ds)
-    ann.monitor.report_epoch()
-    ann.monitor()
-    if not trainer.continue_learning(ann):
-        break
+	trainer.train(dataset=ds)
+	ann.monitor.report_epoch()
+	#ann.monitor()
+	new_w=ann.get_weights()
+	for item in weight_difference(old_w, new_w):
+		for diff in item:
+			if diff != 0.0:
+				print diff
+	old_w=new_w
+	if not trainer.continue_learning(ann):
+		break
+     
+#
+# ^^^ Settles way to quickly (i.e. 30 epochs) on a set of weights
+# to-do list: tweak and improve
+#
         
 #print of comparison:
 m=0
-for f,b in itertools.izip(weights,ann.get_weights()):
+for f,b in itertools.izip(old_w,ann.get_weights()):
     print m, 
     print f
     print b
@@ -141,7 +163,6 @@ for f,b in itertools.izip(weights,ann.get_weights()):
 #Get cd_... and min_ht
 #get zoid
 #get position and orientation
-
 
 def check_int(item):
 	if isinstance(item, (int, long)):
