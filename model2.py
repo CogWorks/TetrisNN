@@ -128,7 +128,7 @@ trainer = Train(dataset = train,
                                     	'test' : test
 									},
                                     cost = LogisticRegressionCost(),
-                                    termination_criterion = EpochCounter(max_epochs=100)))
+                                    termination_criterion = EpochCounter(max_epochs=1000)))
 trainer.main_loop()
 
 class NeuralNetController(TetrisController):
@@ -138,19 +138,20 @@ class NeuralNetController(TetrisController):
         self.model = model
         
     def evaluate(self, sim):
-    	options = sim.options
     	col_heights = get_heights(sim.space)
     	col_pits, pit_rows, lumped_pits = get_all_pits(sim.space)    	
     	features = col_heights + col_pits + [sim.level] + to_one_hot(sim.curr_z, pieces) + to_one_hot(sim.next_z, pieces)
-    	action = model.logistic_regression(features).argmax(axis=1).eval()[0]
-    	rot = int(action) / 10
-    	col = action - (rot * 10)
-    	row = sim.find_drop(col, rot, sim.curr_z, sim.space)
-    	simboard, ends_game = sim.possible_board(col, rot, row, zoid=sim.curr_z)
-    	features = sim.get_features(simboard, prev_space=sim.space, all = False)
-    	opt = [col,rot,row,simboard,features,ends_game]
-    	print(opt)
-    	return opt
+    	actions = model.logistic_regression(features).eval()[0]
+    	ranks = np.argsort(actions)[::-1]
+    	for i in range(0,len(ranks)):
+    		action = ranks[i]
+    		print(action)
+    		rot = int(action) / 10
+    		col = action - (rot * 10)
+    		for option in sim.options:
+    			if col == option[0] and rot == option[1]:
+    				return option
+		return random.choice(sim.options)
 
     def _print(self, feats=False):
         pass
