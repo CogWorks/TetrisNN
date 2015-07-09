@@ -5,7 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../Tetr
 
 from simulator import *
 
-import csv, json
+import csv, json, gzip
 import numpy as np
 import random
 
@@ -25,13 +25,12 @@ from pylearn2.train import Train
 
 from pylearn2.space import CompositeSpace
 
-f = open('test_data.tsv','r')
+f = gzip.open('2014_Population_Study.tsv.gz','r')
 dialect = csv.Sniffer().sniff(f.read(10240))
 f.seek(0)
 reader = csv.reader(f, dialect)
 
 header = reader.next()
-print(header)
 
 pieces = ["I", "O", "T", "S", "Z", "J", "L"]
 data_array=[]
@@ -45,9 +44,8 @@ def makeDDM(data_array):
     return DenseDesignMatrix(X=X, y=y, y_labels=40)
 
 for row in reader:
-	board = row[header.index('board_rep')]
-	if board != '':
-		board = json.loads(board)
+	if row[1] == 'EP_SUMM':
+		board = json.loads(row[header.index('board_rep')])
 		col_heights = get_heights(board)
 		col_pits, pit_rows, lumped_pits = get_all_pits(board)
 		level = int(row[header.index('level')])
@@ -58,12 +56,11 @@ for row in reader:
 		zoid_col = int(row[header.index('zoid_col')])
 		action = [zoid_rot * 10 + zoid_col]
 		data_array.append((features, action))
-		print(data_array[-1])
 
 random.shuffle(data_array)
 
-ntrain = int(.9*len(data_array))
-nvalid = int(.09*len(data_array))
+ntrain = int(.8*len(data_array))
+nvalid = int(.1*len(data_array))
 ntest = len(data_array)-ntrain-nvalid
 
 train = makeDDM(data_array[0:ntrain])
@@ -128,7 +125,7 @@ trainer = Train(dataset = train,
                                     	'test' : test
 									},
                                     cost = LogisticRegressionCost(),
-                                    termination_criterion = EpochCounter(max_epochs=1000)))
+                                    termination_criterion = EpochCounter(max_epochs=100)))
 trainer.main_loop()
 
 class NeuralNetController(TetrisController):
@@ -145,7 +142,6 @@ class NeuralNetController(TetrisController):
     	ranks = np.argsort(actions)[::-1]
     	for i in range(0,len(ranks)):
     		action = ranks[i]
-    		print(action)
     		rot = int(action) / 10
     		col = action - (rot * 10)
     		for option in sim.options:
