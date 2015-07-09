@@ -2,30 +2,27 @@
 
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)),"../Tetris-AI"))
+
 from simulator import *
 
 import csv, json
-
 import numpy as np
-
 import random
 
-import itertools
-
 import theano
+import theano.tensor as T
+from theano.compat.python2x import OrderedDict
+
 from pylearn2.models import mlp
+from pylearn2.models.model import Model
 from pylearn2.training_algorithms import sgd
 from pylearn2.termination_criteria import EpochCounter
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
-
-import numpy
-import theano.tensor as T
 from pylearn2.costs.cost import Cost, DefaultDataSpecsMixin
-from pylearn2.models.model import Model
 from pylearn2.space import VectorSpace
 from pylearn2.utils import sharedX
 from pylearn2.train import Train
-from theano.compat.python2x import OrderedDict
+
 from pylearn2.space import CompositeSpace
 
 f = open('test_data.tsv','r')
@@ -39,19 +36,8 @@ print(header)
 pieces = ["I", "O", "T", "S", "Z", "J", "L"]
 data_array=[]
 
-NFEATURES = 17
-
-def zoid_to_binary(pieces,zoid):
-    #Turns the zoid into a binary classification representation based on the pieces list
-    binary=[0]*len(pieces)
-    i=0
-    for z in pieces:
-        if zoid==z:
-            binary[i]=1
-            break
-        else:
-            i+=1
-    return binary
+def to_one_hot(value, labels):
+	return [1 if value==l else 0 for l in labels]
 
 def makeDDM(data_array):
     X=np.array([d[0] for d in data_array])
@@ -65,8 +51,8 @@ for row in reader:
 		col_heights = get_heights(board)
 		col_pits, pit_rows, lumped_pits = get_all_pits(board)
 		level = int(row[header.index('level')])
-		curr_zoid = zoid_to_binary(pieces, row[header.index('curr_zoid')])
-		next_zoid = zoid_to_binary(pieces, row[header.index('next_zoid')])
+		curr_zoid = to_one_hot(row[header.index('curr_zoid')], pieces)
+		next_zoid = to_one_hot(row[header.index('next_zoid')], pieces)
 		features = col_heights + col_pits + [level] + curr_zoid + next_zoid
 		zoid_rot = int(row[header.index('zoid_rot')])
 		zoid_col = int(row[header.index('zoid_col')])
@@ -91,9 +77,9 @@ class LogisticRegression(Model):
         self.nvis = nvis
         self.nclasses = nclasses
 
-        W_value = numpy.random.uniform(size=(self.nvis, self.nclasses))
+        W_value = np.random.uniform(size=(self.nvis, self.nclasses))
         self.W = sharedX(W_value, 'W')
-        b_value = numpy.zeros(self.nclasses)
+        b_value = np.zeros(self.nclasses)
         self.b = sharedX(b_value, 'b')
         self._params = [self.W, self.b]
 
@@ -155,7 +141,7 @@ class NeuralNetController(TetrisController):
     	options = sim.options
     	col_heights = get_heights(sim.space)
     	col_pits, pit_rows, lumped_pits = get_all_pits(sim.space)    	
-    	features = col_heights + col_pits + [sim.level] + zoid_to_binary(pieces, sim.curr_z) + zoid_to_binary(pieces, sim.next_z)
+    	features = col_heights + col_pits + [sim.level] + to_one_hot(sim.curr_z, pieces) + to_one_hot(sim.next_z, pieces)
     	action = model.logistic_regression(features).argmax(axis=1).eval()[0]
     	rot = int(action) / 10
     	col = action - (rot * 10)
@@ -185,8 +171,3 @@ sim.choice_step = 0
 sim.overhangs = False
 sim.force_legal = True 
 sim.run()
-
-# for d in data_array:
-# 	X, y = process_datalist(d,NFEATURES)
-# 	print ("input", X, y)
-# 	print ("output", model.logistic_regression(X).argmax(axis=1).eval())
