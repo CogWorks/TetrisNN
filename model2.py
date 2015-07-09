@@ -13,7 +13,7 @@ import theano
 from pylearn2.models import mlp
 from pylearn2.train import Train
 from pylearn2.training_algorithms import sgd
-from pylearn2.termination_criteria import EpochCounter
+from pylearn2.termination_criteria import ChannelTarget
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
 
 f = gzip.open('2014_Population_Study.tsv.gz','r')
@@ -58,7 +58,7 @@ train = makeDDM(data_array[0:ntrain])
 valid = makeDDM(data_array[ntrain:(ntrain+nvalid)])
 test = makeDDM(data_array[(ntrain+nvalid):])
 
-hidden_layer = mlp.Sigmoid(layer_name='hidden', dim=int((40+len(data_array[0][0]))/2), irange=.1, init_bias=1.0)
+hidden_layer = mlp.Sigmoid(layer_name='hidden', dim=len(data_array[0][0]), irange=1000)
 output_layer = mlp.Softmax(40, 'output', irange=.1)
 layers = [hidden_layer, output_layer]
 ann = mlp.MLP(layers, nvis=len(data_array[0][0]))
@@ -66,13 +66,13 @@ ann = mlp.MLP(layers, nvis=len(data_array[0][0]))
 trainer = Train(dataset = train,
                 model = ann,
                 algorithm = sgd.SGD(batch_size = 500,
-                                    learning_rate = .000001,
+                                    learning_rate = .05,
                                     monitoring_dataset = {
                                     	'train' : train,
                                     	'valid' : valid,
                                     	'test' : test
 									},
-                                    termination_criterion = EpochCounter(max_epochs=10)))
+                                    termination_criterion = ChannelTarget('test_output_misclass',.9)))
 trainer.main_loop()
 
 class NeuralNetController(TetrisController):
