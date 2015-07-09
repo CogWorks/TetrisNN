@@ -58,15 +58,6 @@ def makeDDM(data_array):
     y=np.array([d[1] for d in data_array])
     return DenseDesignMatrix(X=X, y=y, y_labels=40)
 
-
-#67 through 75 is height change
-#99 is min_ht
-#18 is curr_zoid
-#41,42 is zoid_rot,col
-
-#lines = f.readlines()
-#random.shuffle(lines)
-
 for row in reader:
 	board = row[header.index('board_rep')]
 	if board != '':
@@ -82,6 +73,8 @@ for row in reader:
 		action = [zoid_rot * 10 + zoid_col]
 		data_array.append((features, action))
 		print(data_array[-1])
+
+random.shuffle(data_array)
 
 ntrain = int(.9*len(data_array))
 nvalid = int(.09*len(data_array))
@@ -158,8 +151,20 @@ class NeuralNetController(TetrisController):
     def __init__(self, model):
         self.model = model
         
-    def evaluate(self, options, features):
-        return random.choice(options)
+    def evaluate(self, sim):
+    	options = sim.options
+    	col_heights = get_heights(sim.space)
+    	col_pits, pit_rows, lumped_pits = get_all_pits(sim.space)    	
+    	features = col_heights + col_pits + [sim.level] + zoid_to_binary(pieces, sim.curr_z) + zoid_to_binary(pieces, sim.next_z)
+    	action = model.logistic_regression(features).argmax(axis=1).eval()[0]
+    	rot = int(action) / 10
+    	col = action - (rot * 10)
+    	row = sim.find_drop(col, rot, sim.curr_z, sim.space)
+    	simboard, ends_game = sim.possible_board(col, rot, row, zoid=sim.curr_z)
+    	features = sim.get_features(simboard, prev_space=sim.space, all = False)
+    	opt = [col,rot,row,simboard,features,ends_game]
+    	print(opt)
+    	return opt
 
     def _print(self, feats=False):
         pass

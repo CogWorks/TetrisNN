@@ -106,7 +106,7 @@ for line in f:
 	sub_temp_array=[]
 	line_array = line.split(chr(9))
 	if (line_array[1] == "EP_SUMM"):	
-		for x in range(67,75):
+		for x in range(67,76):
 			sub_temp_array.append(int(line_array[x]))		
 		temp_array.append(sub_temp_array)		#column jaggedness
 		temp_array.append(int(line_array[99]))	#min_ht
