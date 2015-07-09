@@ -40,6 +40,8 @@ f.readline()
 pieces = ["I", "O", "T", "S", "Z", "J", "L"]
 data_array=[]
 
+NFEATURES = 17
+
 def zoid_to_binary(pieces,zoid):
     #Turns the zoid into a binary classification representation based on the pieces list
     binary=[0]*len(pieces)
@@ -52,23 +54,27 @@ def zoid_to_binary(pieces,zoid):
             i+=1
     return binary
     
+def process_datalist(datalist, NFEATURES):
+	X = [-1]*NFEATURES
+	j=0
+	for item in datalist[0]:
+		X[j]=item
+		j+=1
+	X[j]=datalist[1]
+	j+=1
+	for item in zoid_to_binary(pieces,datalist[2]):
+		X[j]=item
+		j+=1
+	y = [datalist[3][0] * 10 + datalist[3][1]]
+	return (X, y)
+
 def GetInputOutput(data_array,pieces):
     #Changes python array of the relevant data to a DenseDesignMatrix, required for mlp.mlp
-    X=[[-1]*17]*len(data_array)
-    y=[[-1]*1]*len(data_array)
-    i=0
-    for datalist in data_array:
-        j=0
-        for item in datalist[0]:
-            X[i][j]=item
-            j+=1
-        X[i][j]=datalist[1]
-        j+=1
-        for item in zoid_to_binary(pieces,datalist[2]):
-            X[i][j]=item
-            j+=1
-        y[i][0] = datalist[3][0] * 10 + datalist[3][1]
-        i+=1
+    lda = len(data_array)
+    X=[None]*lda
+    y=[None]*lda
+    for i in range(0,lda):
+        X[i], y[i] = process_datalist(data_array[i],NFEATURES)
     X=np.array(X)
     y=np.array(y)
     return DenseDesignMatrix(X=X, y=y, y_labels=40)
@@ -98,7 +104,6 @@ for line in lines:
 ntrain = int(.9*len(data_array))
 nvalid = int(.09*len(data_array))
 ntest = len(data_array)-ntrain-nvalid
-print(ntrain,nvalid,ntest)
 
 train = GetInputOutput(data_array[0:ntrain], pieces)
 valid = GetInputOutput(data_array[ntrain:(ntrain+nvalid)], pieces)
@@ -150,17 +155,22 @@ class LogisticRegressionCost(DefaultDataSpecsMixin, Cost):
         loss = -(targets * T.log(outputs)).sum(axis=1)
         return loss.mean()
 
+model = LogisticRegression(nvis=17,nclasses=40)
 
 trainer = Train(dataset = train,
-                model = LogisticRegression(nvis=17,nclasses=40),
+                model = model,
                 algorithm = sgd.SGD(batch_size = 200,
                                     learning_rate = 1e-3,
-									monitoring_dataset = {
-										'train' : train,
-										'valid' : valid,
-										'test' : test
+                                    monitoring_dataset = {
+                                    	'train' : train,
+                                    	'valid' : valid,
+                                    	'test' : test
 									},
                                     cost = LogisticRegressionCost(),
-                                    termination_criterion = EpochCounter(max_epochs=10000)))
+                                    termination_criterion = EpochCounter(max_epochs=100)))
 trainer.main_loop() 
 
+for d in data_array:
+	X, y = process_datalist(d,NFEATURES)
+	print ("input", X, y)
+	print ("output", model.logistic_regression(X).argmax(axis=1).eval())
