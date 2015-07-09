@@ -10,20 +10,11 @@ import numpy as np
 import random
 
 import theano
-import theano.tensor as T
-from theano.compat.python2x import OrderedDict
-
 from pylearn2.models import mlp
-from pylearn2.models.model import Model
+from pylearn2.train import Train
 from pylearn2.training_algorithms import sgd
 from pylearn2.termination_criteria import EpochCounter
 from pylearn2.datasets.dense_design_matrix import DenseDesignMatrix
-from pylearn2.costs.cost import Cost, DefaultDataSpecsMixin
-from pylearn2.space import VectorSpace
-from pylearn2.utils import sharedX
-from pylearn2.train import Train
-
-from pylearn2.space import CompositeSpace
 
 f = gzip.open('2014_Population_Study.tsv.gz','r')
 dialect = csv.Sniffer().sniff(f.read(10240))
@@ -67,65 +58,21 @@ train = makeDDM(data_array[0:ntrain])
 valid = makeDDM(data_array[ntrain:(ntrain+nvalid)])
 test = makeDDM(data_array[(ntrain+nvalid):])
 
-class LogisticRegression(Model):
-    def __init__(self, nvis, nclasses):
-        super(LogisticRegression, self).__init__()
-
-        self.nvis = nvis
-        self.nclasses = nclasses
-
-        W_value = np.random.uniform(size=(self.nvis, self.nclasses))
-        self.W = sharedX(W_value, 'W')
-        b_value = np.zeros(self.nclasses)
-        self.b = sharedX(b_value, 'b')
-        self._params = [self.W, self.b]
-
-        self.input_space = VectorSpace(dim=self.nvis)
-        self.output_space = VectorSpace(dim=self.nclasses)
-
-    def logistic_regression(self, inputs):
-        return T.nnet.softmax(T.dot(inputs, self.W) + self.b)
-        
-    def get_monitoring_data_specs(self):
-        space = CompositeSpace([self.get_input_space(),
-                                self.get_target_space()])
-        source = (self.get_input_source(), self.get_target_source())
-        return (space, source)
-
-    def get_monitoring_channels(self, data):
-        space, source = self.get_monitoring_data_specs()
-        space.validate(data)
-
-        X, y = data
-        y_hat = self.logistic_regression(X)
-        error = T.neq(y.argmax(axis=1), y_hat.argmax(axis=1)).mean()
-        return OrderedDict([('error', error)])
-        
-class LogisticRegressionCost(DefaultDataSpecsMixin, Cost):
-    supervised = True
-
-    def expr(self, model, data, **kwargs):
-        space, source = self.get_data_specs(model)
-        space.validate(data)
-        
-        inputs, targets = data
-        outputs = model.logistic_regression(inputs)
-        loss = -(targets * T.log(outputs)).sum(axis=1)
-        return loss.mean()
-
-model = LogisticRegression(nvis=len(data_array[0][0]),nclasses=40)
+hidden_layer = mlp.Sigmoid(layer_name='hidden', dim=int((40+len(data_array[0][0]))/2), irange=.1, init_bias=1.0)
+output_layer = mlp.Softmax(40, 'output', irange=.1)
+layers = [hidden_layer, output_layer]
+ann = mlp.MLP(layers, nvis=len(data_array[0][0]))
 
 trainer = Train(dataset = train,
-                model = model,
-                algorithm = sgd.SGD(batch_size = 200,
-                                    learning_rate = 1e-3,
+                model = ann,
+                algorithm = sgd.SGD(batch_size = 500,
+                                    learning_rate = .000001,
                                     monitoring_dataset = {
                                     	'train' : train,
                                     	'valid' : valid,
                                     	'test' : test
 									},
-                                    cost = LogisticRegressionCost(),
-                                    termination_criterion = EpochCounter(max_epochs=100)))
+                                    termination_criterion = EpochCounter(max_epochs=10)))
 trainer.main_loop()
 
 class NeuralNetController(TetrisController):
@@ -138,7 +85,10 @@ class NeuralNetController(TetrisController):
     	col_heights = get_heights(sim.space)
     	col_pits, pit_rows, lumped_pits = get_all_pits(sim.space)    	
     	features = col_heights + col_pits + [sim.level] + to_one_hot(sim.curr_z, pieces) + to_one_hot(sim.next_z, pieces)
-    	actions = model.logistic_regression(features).eval()[0]
+    	
+    	inputs = np.array([features])
+    	actions = self.model.fprop(theano.shared(inputs, name='inputs')).eval()[0]
+    	
     	ranks = np.argsort(actions)[::-1]
     	for i in range(0,len(ranks)):
     		action = ranks[i]
@@ -152,7 +102,7 @@ class NeuralNetController(TetrisController):
     def _print(self, feats=False):
         pass
         
-controller = NeuralNetController(model)
+controller = NeuralNetController(ann)
     
 sim = TetrisSimulator(controller = controller,
 			board = testboard(), curr="L", next = "S",
