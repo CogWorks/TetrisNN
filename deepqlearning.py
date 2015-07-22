@@ -71,7 +71,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
                     perception[self.size * self.size + r * self.size + c] = 1;
         return perception
         
-    def get_reward(self, N):
+    def get_points(self, N):
         if N==1:
             return 40 * (self.level + 1)
         elif N==2:
@@ -84,52 +84,40 @@ class TetrisSimulator(PyDeepCL.Scenario):
             return -0
 
     def act(self,index):
-        reward = 0
+        points = 0
         zoid = all_zoids[self.zoid_name].get_copy()
         temp_board = self.board.get_cow()
         zoid.set_orient(self.zoid_orient)
         if index==self.actions-1:
             pass
-        elif index==3:
+        elif index==2:
             board_profile = self.board.get_top_profile()
             zoid_profile = zoid.get_bottom_profile()
             heights = tuple(board_profile[cc+self.zoid_col]+zoid_profile[cc] for cc in xrange(len(zoid_profile)))
             r = self.board.pile_height()-min(heights)
             print(self.zoid_row,r)
             if temp_board.imprint_zoid(zoid, pos=(r, self.zoid_col), value=1, check=True):
-                reward += self.zoid_row-r
+                points += self.zoid_row-r
                 self.zoid_row = r
-                reward += self.new_zoid(True)
+                points += self.new_zoid(True)
         elif index==4:
             if self.zoid_row > 0:
                 if temp_board.imprint_zoid(zoid, pos=(self.zoid_row-1, self.zoid_col), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_row = self.zoid_row-1
-                else:
-                    reward += self.new_zoid(True)
-            else:
-                reward += self.new_zoid(True)
         elif index==0:
             if self.zoid_col > 0:
                 if temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col-1), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_col = self.zoid_col-1
-                else:
-                    pass#reward = -.01
-            else:
-                pass#reward = -.01
-        elif index==2:
+        elif index==3:
             if self.zoid_col < 9-zoid.col_count():
                 if temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col+1), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_col = self.zoid_col+1
-                else:
-                    pass#reward = -.01
-            else:
-                pass#reward = -.01
         elif index==1:
             if self.zoid_name == "I" and self.zoid_row == 19 and self.zoid_orient == 0:
                 self.zoid_row = 18
@@ -139,10 +127,6 @@ class TetrisSimulator(PyDeepCL.Scenario):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_orient = zoid.get_orient()
-                else:
-                    pass
-            else:
-                pass#reward = -.01
         self._show()
         self.frames += .05/(1./60)
         if self.frames > 10:
@@ -155,10 +139,8 @@ class TetrisSimulator(PyDeepCL.Scenario):
                 temp_board = self.board.get_cow()
             else:
                 self.new_zoid(True)
-        self.score += reward
-        r = self.episodes * reward
-        self.reward += r
-        return r
+        self.score += points
+        return points
 
     def hasFinished(self):
         return self.finished
@@ -181,13 +163,13 @@ class TetrisSimulator(PyDeepCL.Scenario):
         print("Best Lines: %d" % self.best_lines)
         
     def new_zoid(self, oldzoid=None):
-        reward = 0
+        points = 0
         if oldzoid:
             zoid = all_zoids[self.zoid_name].get_copy()
             zoid.set_orient(self.zoid_orient)
             self.board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col), value=1, check=True)
             lines = self.board.check_full(False)
-            reward += self.get_reward(lines)
+            points += self.get_points(lines)
             self.lines += lines
         self.episodes += 1
         self.zoid_board = tetris_cpp.tetris_cow2()
@@ -207,9 +189,8 @@ class TetrisSimulator(PyDeepCL.Scenario):
             self.zoid_board = temp_board
         else:
             self.finished = True
-            #reward += self.episodes
         self.frames = 0
-        return reward
+        return points
 
     def reset(self):
         if self.game > 0:
@@ -223,9 +204,9 @@ class TetrisSimulator(PyDeepCL.Scenario):
             self.best_score = self.score
         self.level = 0
         self.lines = 0
+        self.reward = 0
         self.score = 0
         self.frames = 0
-        self.reward = 0
         self.episodes = 0
         self.game += 1
         self.board = tetris_cpp.tetris_cow2()
@@ -242,7 +223,7 @@ def go():
 
     cl = PyDeepCL.EasyCL()
     net = PyDeepCL.NeuralNet(cl)
-    sgd = PyDeepCL.SGD(cl, 0.002, 0)
+    sgd = PyDeepCL.SGD(cl, 0.01, 0)
     sgd.setMomentum(0.0001)
     net.addLayer(PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size))
     net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
@@ -261,7 +242,7 @@ def go():
     qlearner = PyDeepCL.QLearner(sgd, simulator, net)
     qlearner.setLambda(0.9) # sets decay of the eligibility trace decay rate
     qlearner.setMaxSamples(32) # how many samples to learn from after each move
-    qlearner.setEpsilon(0.25) # probability of exploring, instead of exploiting
+    qlearner.setEpsilon(0.66) # probability of exploring, instead of exploiting
     #qlearner.setLearningRate(0.1)
     qlearner.run()
 
