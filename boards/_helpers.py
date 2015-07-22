@@ -35,9 +35,9 @@ def _find_outline(board,down=False):
     return counts
 
 
-def print_board(board,output=sys.stderr,entire=False,show_full=False):
+def print_board(board,output=sys.stderr,entire=False,show_full=False,count=False):
     """Print a Tetris board."""
-    try: rows = [r for r in board.rows(reverse=True,all=entire)]
+    try: rows = [r for r in board.rows(reverse=True,all=entire,count=count)]
     except TypeError: rows = [r for r in board.rows(reverse=True)]
 
     if rows and rows[0] > 1: row_format = '[%%s%%.%ud] '%int(math.ceil(math.log(rows[0],10)))

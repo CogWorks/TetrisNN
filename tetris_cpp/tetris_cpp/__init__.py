@@ -1,24 +1,24 @@
 from _tetris_cpp import *
 
 
-class tetris_cow2(tetris_20_10):
+class tetris_cow2(tetris_22_10):
     """Copy-on-write Tetris board."""
-    def __init__(self,max_rows=20,cols=10,rows=0):
+    def __init__(self,max_rows=22,cols=10,rows=0):
         """Initialize board: number of cols, max number of rows, initial number of rows."""
-        if max_rows != 20 or cols != 10: raise ValueError('this class can only be used with 20x10 boards')
-        tetris_20_10.__init__(self,rows)
+        if max_rows != 22 or cols != 10: raise ValueError('this class can only be used with 22x10 boards')
+        tetris_22_10.__init__(self,rows)
         self._profile = None
 
     @staticmethod
     def convert_old_board(board,clear=True):
         """Create a new board from a "list-of-rows" board."""
         all_cols = tuple(len(row) for row in board)
-        if len(all_cols) == 20:
+        if len(all_cols) == 22:
             if max(all_cols) != min(all_cols): raise ValueError('rows are not all the same length')
             if max(all_cols) != 10: raise ValueError('rows must all be of length 10')
             cols = all_cols[0]
-        else: raise ValueError('board must contain 20 rows')
-        new_board = tetris_cow2(rows=20)
+        else: raise ValueError('board must contain 22 rows')
+        new_board = tetris_cow2(rows=22)
         for r in new_board.rows():
             for c in new_board.cols():
                 new_board[r,c] = board[len(board)-r-1][c]
@@ -28,9 +28,10 @@ class tetris_cow2(tetris_20_10):
 
     #ELEMENT ACCESS >>>>>
 
-    def rows(self,reverse=False,all=False):
+    def rows(self,reverse=False,all=False,count=False):
         """Get a generator for the rows of the zoid in its current position and orientation. Optional: reverse order."""
-        count = self.row_count() if all else self.pile_height()
+        if not count:
+            count = self.row_count() if all else self.pile_height()
         return xrange(count-1,-1,-1) if reverse else xrange(count)
 
     def cols(self):
@@ -47,7 +48,7 @@ class tetris_cow2(tetris_20_10):
 
     def get_top_profile(self):
         """Get the profile of the top of the board."""
-        #NOTE: 'get_tamper_seal' is managed by 'tetris_20_10'; when the board is
+        #NOTE: 'get_tamper_seal' is managed by 'tetris_22_10'; when the board is
         #modified, it unsets the seal
         if not self.get_tamper_seal():
             self._generate_profile()
@@ -92,7 +93,7 @@ class tetris_cow2(tetris_20_10):
             for c in zoid.cols():
                 if zoid[r,c]:
                     if check and self[r,c]: raise ValueError('board cell not empty')
-                    self[r,c] = zoid[r,c]\
+                    self[r,c] = zoid[r,c]
 
     #<<<<< COPY-ON-WRITE
 
