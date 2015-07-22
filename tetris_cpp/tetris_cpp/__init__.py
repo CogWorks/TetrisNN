@@ -92,8 +92,9 @@ class tetris_cow2(tetris_22_10):
         for r in zoid.rows():
             for c in zoid.cols():
                 if zoid[r,c]:
-                    if check and self[r,c]: raise ValueError('board cell not empty')
+                    if check and self[r,c]: return False
                     self[r,c] = zoid[r,c]
+        return True
 
     #<<<<< COPY-ON-WRITE
 

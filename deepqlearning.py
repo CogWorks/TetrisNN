@@ -75,43 +75,40 @@ class TetrisSimulator(PyDeepCL.Scenario):
 
     def act(self,index):
         print("Index: %d" % index)
-        reward = 0
+        reward = 1
         zoid = all_zoids[self.zoid_name].get_copy()
         temp_board = self.board.get_cow()
         zoid.set_orient(self.zoid_orient)
-        try:
-            if index==3:
-                zoid = all_zoids[self.zoid_name].get_copy()
-                if self.zoid_row > 0:
-                    temp_board.imprint_zoid(zoid, pos=(self.zoid_row-1, self.zoid_col), value=1, check=True)
+        if index==3:
+            if self.zoid_row > 0:
+                if temp_board.imprint_zoid(zoid, pos=(self.zoid_row-1, self.zoid_col), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_row = self.zoid_row-1
                 else:
-                    reward = self.new_zoid(True)
-            elif index==0:
-                if self.zoid_name == "I" and self.zoid_row == 19 and self.zoid_orient == 0:
-                    self.zoid_row = 18
-                zoid.set_orient((self.zoid_orient+1)%4)
-                temp_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1, check=True)
+                    reward += self.new_zoid(True)
+            else:
+                reward += self.new_zoid(True)
+        elif index==0:
+            if self.zoid_name == "I" and self.zoid_row == 19 and self.zoid_orient == 0:
+                self.zoid_row = 18
+            zoid.set_orient((self.zoid_orient+1)%4)
+            if self.zoid_col+zoid.col_count() <= 10 and temp_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1, check=True):
                 self.zoid_board = tetris_cpp.tetris_cow2()
                 self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                 self.zoid_orient = zoid.get_orient()
-            elif index==1:
-                if self.zoid_col > 0:
-                    temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col-1), value=1, check=True)
+        elif index==1:
+            if self.zoid_col > 0:
+                if temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col-1), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_col = self.zoid_col-1
-            elif index==2:
-                if self.zoid_col < 9-zoid.col_count():
-                    temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col+1), value=1, check=True)
+        elif index==2:
+            if self.zoid_col < 9-zoid.col_count():
+                if temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col+1), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_col = self.zoid_col+1
-        except (ValueError, IndexError) as e:
-            if index==0:
-                reward += self.new_zoid(True)
         self._show()
         return reward
 
@@ -155,12 +152,11 @@ class TetrisSimulator(PyDeepCL.Scenario):
         zoid = all_zoids[self.zoid_name].get_copy()
         zoid.set_orient(self.zoid_orient)
         temp_board = self.board.get_cow()
-        try:
-            temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col), value=1, check=True)
+        if temp_board.imprint_zoid(zoid, pos=(self.zoid_row, self.zoid_col), value=1, check=True):
             self.zoid_board = temp_board
-        except ValueError:
+        else:
             self.finished = True
-            reward += self.episodes
+            #reward += self.episodes
         return reward
 
     def reset(self):
@@ -183,31 +179,16 @@ def go():
 
     cl = PyDeepCL.EasyCL()
     net = PyDeepCL.NeuralNet(cl)
-    # sgd = PyDeepCL.SGD(cl, 0.1, 0.0)
-    # net.addLayer(PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size))
-    # net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
-    # net.addLayer(PyDeepCL.ActivationMaker().relu())
-    # net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
-    # net.addLayer(PyDeepCL.ActivationMaker().relu())
-    # net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(100).imageSize(1).biased())
-    # net.addLayer(PyDeepCL.ActivationMaker().tanh())
-    # net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(numActions).imageSize(1).biased())
-    # net.addLayer(PyDeepCL.SquareLossMaker())
-    
-    sgd = PyDeepCL.SGD( cl, 0.002, 0 )
-    sgd.setMomentum( 0.0001 )
-    net.addLayer( PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size) )
-    net.addLayer( PyDeepCL.NormalizationLayerMaker().translate(-0.5).scale(1/255.0) )
-    net.addLayer( PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased() )
-    net.addLayer( PyDeepCL.ActivationMaker().relu() )
-    net.addLayer( PyDeepCL.PoolingMaker().poolingSize(2) )
-    net.addLayer( PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased() )
-    net.addLayer( PyDeepCL.ActivationMaker().relu() )
-    net.addLayer( PyDeepCL.PoolingMaker().poolingSize(3) )
-    net.addLayer( PyDeepCL.FullyConnectedMaker().numPlanes(150).imageSize(1).biased() )
-    net.addLayer( PyDeepCL.ActivationMaker().tanh() )
-    net.addLayer( PyDeepCL.FullyConnectedMaker().numPlanes(10).imageSize(1).biased() )
-    net.addLayer( PyDeepCL.SoftMaxMaker() )
+    sgd = PyDeepCL.SGD(cl, 0.1, 0.0)
+    net.addLayer(PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size))
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ActivationMaker().relu())
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ActivationMaker().relu())
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(100).imageSize(1).biased())
+    net.addLayer(PyDeepCL.ActivationMaker().tanh())
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(numActions).imageSize(1).biased())
+    net.addLayer(PyDeepCL.SquareLossMaker())
 
     simulator.setNet(net)
 
