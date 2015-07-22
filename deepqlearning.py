@@ -74,7 +74,6 @@ class TetrisSimulator(PyDeepCL.Scenario):
             return -0
 
     def act(self,index):
-        print("Index: %d" % index)
         reward = 1
         zoid = all_zoids[self.zoid_name].get_copy()
         temp_board = self.board.get_cow()
@@ -124,6 +123,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
         combo_board = self.board.get_cow()
         combo_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=2)
         print_board(combo_board, count=20)
+        print("Game: %d" % self.game)
         print("Episode: %d" % self.episodes)
         print("Score: %d" % self.score)
         print("Lines: %d" % self.lines)
