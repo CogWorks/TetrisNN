@@ -226,23 +226,23 @@ def go():
     sgd = PyDeepCL.SGD(cl, 0.01, 0)
     sgd.setMomentum(0.0001)
     net.addLayer(PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size))
-    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
-    net.addLayer(PyDeepCL.ActivationMaker().relu())
-    net.addLayer(PyDeepCL.PoolingMaker().poolingSize(2))
-    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(8).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(10).filterSize(5).padZeros().biased())
     net.addLayer(PyDeepCL.ActivationMaker().relu())
     net.addLayer(PyDeepCL.PoolingMaker().poolingSize(3))
-    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(150).imageSize(1).biased())
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(10).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ActivationMaker().relu())
+    net.addLayer(PyDeepCL.PoolingMaker().poolingSize(5))
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(200).imageSize(1).biased())
     net.addLayer(PyDeepCL.ActivationMaker().tanh())
-    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(10).imageSize(1).biased())
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(7).imageSize(1).biased())
     net.addLayer(PyDeepCL.SoftMaxMaker())
 
     simulator.setNet(net)
 
     qlearner = PyDeepCL.QLearner(sgd, simulator, net)
-    qlearner.setLambda(0.9) # sets decay of the eligibility trace decay rate
+    qlearner.setLambda(0.999) # sets decay of the eligibility trace decay rate
     qlearner.setMaxSamples(32) # how many samples to learn from after each move
-    qlearner.setEpsilon(0.66) # probability of exploring, instead of exploiting
+    qlearner.setEpsilon(0.75) # probability of exploring, instead of exploiting
     #qlearner.setLearningRate(0.1)
     qlearner.run()
 
