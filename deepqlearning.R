@@ -4,7 +4,9 @@ while (T) {
   d <- read.csv("~/workspace/TetrisNN/deepqlearning.log",header=F)
   colnames(d) <- c("game","episodes","lines","score","reward")
   d <- melt(d,id.vars="game")
-  p <- ggplot(d,aes(x=game,y=value,group=variable,color=variable)) + geom_line() + stat_smooth(color="black",size=1.25)
+  p <- ggplot(d,aes(x=game,y=value,group=variable,color=variable)) + 
+    geom_line() + 
+    stat_smooth(color="black",size=1.25,method="gam")
   print(p)
-  Sys.sleep(10)
+  Sys.sleep(5)
 }
