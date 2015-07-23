@@ -78,11 +78,12 @@ class tetris_zoid(object):
     def rows(self,reverse=False,absolute=True):
         """Get a generator for the rows of the zoid in its current position and orientation. Optional: reverse order for printing."""
         offset = self._pos[0] if absolute else 0
-        return xrange(self.row_count()+offset-1,-1,-1) if reverse else xrange(self.row_count()+offset)
+        return xrange(self.row_count()+offset-1,offset-1,-1) if reverse else xrange(offset,self.row_count()+offset)
 
     def cols(self,absolute=True):
         """Get a generator for the cols of the zoid in its current position and orientation."""
-        return xrange(self.col_count()+(self._pos[1] if absolute else 0))
+        offset = self._pos[1] if absolute else 0
+        return xrange(offset,self.col_count()+offset)
 
     def row_iter(self,row,*args,**kwds):
         """Iterate a particular row of cells. (Generates cell indices.)"""
@@ -123,8 +124,8 @@ class tetris_zoid(object):
 
         cells = [[0]*self.col_count() for _ in xrange(self.row_count())]
 
-        for r in self.rows():
-            for c in self.cols():
+        for r in self.rows(absolute=False):
+            for c in self.cols(absolute=False):
                 row,col = r,c
 
                 if self._orient == 0: pass
