@@ -28,7 +28,8 @@ class TetrisSimulator(PyDeepCL.Scenario):
     def __init__(self):
         super(TetrisSimulator, self).__init__()
         self.size = 20
-        self.planes = 1
+        self.planes = 4
+        self.perception = [0] * self.planes * self.size * self.size
         self.actions = 5
         self.finished = False
         self.game = 0
@@ -54,7 +55,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
         return self.planes
         
     def getPerception(self):
-        perception = [0] * self.planes * self.size * self.size
+        perception = [0] * self.size * self.size
         if self.board.pile_height() > 0:
             for r in range(0,20):
                 for c in range(0,10):
@@ -64,7 +65,8 @@ class TetrisSimulator(PyDeepCL.Scenario):
             for c in range(0,10):
                 if self.zoid_board[21-r,c] > 0:
                     perception[r * self.size + c] = 1;
-        return perception
+        self.perception = self.perception[self.size * self.size:] + perception
+        return self.perception
         
     def get_points(self, N):
         if N==1:
@@ -79,12 +81,15 @@ class TetrisSimulator(PyDeepCL.Scenario):
             return -0
 
     def act(self,index):
+        print("==============")
+        print(index)
+        print("==============")
         points = 0
-        reward = -0.1
+        reward = -1
         zoid = all_zoids[self.zoid_name].get_copy()
         temp_board = self.board.get_cow()
         zoid.set_orient(self.zoid_orient)
-        if index==2:
+        if index==4:
             reward = 0
             while True:
                 if self.zoid_row > 0:
@@ -101,7 +106,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
                 else:
                     break
             points += self.new_zoid(True)
-        elif index==4:
+        elif index==3:
             if self.zoid_row > 0:
                 if temp_board.imprint_zoid(zoid, pos=(self.zoid_row-1, self.zoid_col), value=1, check=True):
                     self.zoid_board = tetris_cpp.tetris_cow2()
@@ -122,7 +127,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
                     self.zoid_board.imprint_zoid(zoid, pos=(self.zoid_row,self.zoid_col), value=1)
                     self.zoid_col = self.zoid_col+1
                     reward = 0
-        elif index==3:
+        elif index==2:
             if self.zoid_name == "I" and self.zoid_row == 19 and self.zoid_orient == 0:
                 self.zoid_row = 18
             zoid.set_orient((self.zoid_orient+1)%4)
@@ -167,6 +172,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
             lines = self.board.check_full(False)
             points += self.get_points(lines)
             self.lines += lines
+            self.level = int(self.lines/10)
         self.episodes += 1
         self.zoid_board = tetris_cpp.tetris_cow2()
         self.zoid_name = random.choice(all_zoids.keys())
@@ -222,15 +228,15 @@ def go():
     sgd = PyDeepCL.SGD(cl, 0.05, 0)
     sgd.setMomentum(0.0001)
     net.addLayer(PyDeepCL.InputLayerMaker().numPlanes(planes).imageSize(size))
-    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(10).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(16).filterSize(5).padZeros().biased())
     net.addLayer(PyDeepCL.ActivationMaker().relu())
     net.addLayer(PyDeepCL.PoolingMaker().poolingSize(3))
-    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(10).filterSize(5).padZeros().biased())
+    net.addLayer(PyDeepCL.ConvolutionalMaker().numFilters(32).filterSize(5).padZeros().biased())
     net.addLayer(PyDeepCL.ActivationMaker().relu())
     net.addLayer(PyDeepCL.PoolingMaker().poolingSize(5))
-    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(200).imageSize(1).biased())
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(256).imageSize(1).biased())
     net.addLayer(PyDeepCL.ActivationMaker().tanh())
-    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(7).imageSize(1).biased())
+    net.addLayer(PyDeepCL.FullyConnectedMaker().numPlanes(numActions).imageSize(1).biased())
     net.addLayer(PyDeepCL.SoftMaxMaker())
 
     simulator.setNet(net)
