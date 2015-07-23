@@ -28,7 +28,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
     def __init__(self):
         super(TetrisSimulator, self).__init__()
         self.size = 20
-        self.planes = 2
+        self.planes = 1
         self.actions = 5
         self.finished = False
         self.game = 0
@@ -63,7 +63,7 @@ class TetrisSimulator(PyDeepCL.Scenario):
         for r in range(0,20):
             for c in range(0,10):
                 if self.zoid_board[21-r,c] > 0:
-                    perception[self.size * self.size + r * self.size + c] = 1;
+                    perception[r * self.size + c] = 1;
         return perception
         
     def get_points(self, N):
